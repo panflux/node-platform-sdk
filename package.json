@@ -1,0 +1,18 @@
+{
+    "name": "@panflux/platform-sdk",
+    "version": "0.0.1",
+    "description": "Software Development Kit for Panflux platform development",
+    "repository": "github:panflux/node-platform-sdk",
+    "author": "Niels Keurentjes <niels.keurentjes@omines.com>",
+    "license": "MIT",
+    "bin": {
+        "test-platform": "./bin/test-platform.js"
+    },
+    "dependencies": {
+        "@panflux/platform": "^0.0.1",
+        "chalk": "^2.4.1",
+        "vorpal": "^1.12.0",
+        "watch": "^1.0.2",
+        "vm2": "^3.5.2"
+    }
+}
