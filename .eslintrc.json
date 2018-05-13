@@ -1,0 +1,24 @@
+{
+    "extends": [
+        "eslint:recommended",
+        "google"
+    ],
+    "env": {
+        "node": true,
+        "es6": true
+    },
+    "parserOptions": {
+        "ecmaVersion": 2017
+    },
+    "rules": {
+        "indent": ["error", 4],
+        "max-len": ["error", {
+            "code": 125,
+            "comments": 200,
+            "ignoreUrls": true,
+            "ignoreStrings": true,
+            "ignoreTemplateLiterals": true,
+            "ignoreRegExpLiterals": true
+        }]
+    }
+}

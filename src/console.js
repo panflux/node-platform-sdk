@@ -11,7 +11,6 @@ const fork = require('child_process').fork;
 const path = require('path');
 const vorpal = require('vorpal')();
 const watch = require('watch');
-const yaml = require('js-yaml');
 
 const home = process.cwd();
 
@@ -19,15 +18,22 @@ const LOG_COLORS = {
     error: chalk.bold.red,
     warn: chalk.bold.yellow,
     info: chalk.green,
-}
+};
 
 let timeout;
-function delayedRestart(f) {
+let proc;
+
+/**
+ * Restart the platform code after a short delay.
+ */
+function delayedRestart() {
     clearTimeout(timeout);
     timeout = setTimeout(restart, 250);
 }
 
-let proc;
+/**
+ * Restart the platform.
+ */
 function restart() {
     if (proc) {
         proc.kill('SIGHUP');
@@ -44,22 +50,21 @@ function restart() {
     proc.on('message', (msg) => {
         const args = msg.args;
         switch (msg.name) {
-            case 'log':
-                const color = LOG_COLORS[args.level] || chalk.black;
-                vorpal.log(color(`[${args.level}] ${args.message}`));
-                break;
-            case 'discovery':
-                vorpal.log(chalk.magenta(args));
-                break;
-            default:
-                vorpal.log('Unknown message', msg);
-                break;
+        case 'log':
+            vorpal.log((LOG_COLORS[args.level] || chalk.default)(`[${args.level}] ${args.message}`));
+            break;
+        case 'discovery':
+            vorpal.log(chalk.magenta(args));
+            break;
+        default:
+            vorpal.log('Unknown message', msg);
+            break;
         }
     });
 }
 
 watch.createMonitor(home, {interval: 1}, (monitor) => {
-    ['created', 'changed', 'removed'].forEach(e => monitor.on(e, (f) => {
+    ['created', 'changed', 'removed'].forEach((e) => monitor.on(e, (f) => {
         const local = path.relative(home, f);
         vorpal.log(`./${local} was ${e}...`);
         delayedRestart();
