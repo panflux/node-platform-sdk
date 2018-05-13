@@ -6,6 +6,9 @@
  * file that was distributed with this source code.
  */
 
-const {Platform, ProcessTransport} = require('@panflux/platform');
+const {platform, logger} = require('@panflux/platform');
 
-Platform.load(process.cwd()).run(new ProcessTransport);
+logger.info('Foo');
+platform.on('load', () => {
+    logger.warn('Loaded');
+})
