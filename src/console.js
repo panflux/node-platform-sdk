@@ -66,6 +66,7 @@ function restart() {
 watch.createMonitor(home, {interval: 1}, (monitor) => {
     ['created', 'changed', 'removed'].forEach((e) => monitor.on(e, (f) => {
         const local = path.relative(home, f);
+        if (local.indexOf('.git') !== -1) return;
         vorpal.log(`./${local} was ${e}...`);
         delayedRestart();
     }));
