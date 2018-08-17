@@ -8,4 +8,5 @@
 
 const {Platform, ProcessTransport} = require('@panflux/platform');
 
-Platform.load(process.cwd()).run(new ProcessTransport);
+const platform = Platform.load(process.cwd());
+platform.run(new ProcessTransport);
