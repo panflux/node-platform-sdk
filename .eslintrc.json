@@ -1,7 +1,12 @@
 {
     "extends": [
         "eslint:recommended",
-        "google"
+        "google",
+        "plugin:jest/recommended"
+    ],
+    "plugins": [
+        "jest",
+        "compat"
     ],
     "env": {
         "node": true,

@@ -15,7 +15,7 @@ test('Fork runs platform', () => {
 
     process.send = (msg) => {
         message = msg;
-    }
+    };
 
     process.chdir(path.join(__dirname, 'fixtures/platform'));
     require(path.join(rootdir, 'src', 'fork'));

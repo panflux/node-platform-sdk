@@ -11,4 +11,4 @@ const {platform, logger} = require('@panflux/platform');
 logger.info('Foo');
 platform.on('load', () => {
     logger.warn('Loaded');
-})
+});

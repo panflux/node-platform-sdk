@@ -9,8 +9,13 @@
         "test-platform": "./bin/test-platform.js"
     },
     "scripts": {
-        "lint": "eslint --fix src",
+        "lint": "eslint --fix src tests",
         "test": "eslint src && jest"
+    },
+    "lint-staged": {
+        "*.js": [
+            "eslint"
+        ]
     },
     "dependencies": {
         "@panflux/platform": "0.1.1",
@@ -21,15 +26,25 @@
     },
     "devDependencies": {
         "eslint": "5.8.0",
-        "eslint-config-google": "0.11.0",
+        "eslint-config-google": "^0.11.0",
+        "eslint-plugin-compat": "^2.6.3",
         "eslint-plugin-import": "2.14.0",
-        "jest": "23.5.0"
+        "eslint-plugin-jest": "^22.0.0",
+        "husky": "^1.2.0",
+        "jest": "23.5.0",
+        "lint-staged": "^8.0.5",
+        "npm-run-all": "^4.1.3"
     },
     "jest": {
         "collectCoverage": true,
         "collectCoverageFrom": [
             "src/**/*.js"
         ]
+    },
+    "husky": {
+        "hooks": {
+            "pre-commit": "lint-staged"
+        }
     },
     "files": [
         "bin/*",

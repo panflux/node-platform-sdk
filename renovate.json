@@ -1,5 +1,12 @@
 {
   "extends": [
     "config:base"
+  ],
+  "patch": {
+    "automerge": true,
+    "automergeType": "branch"
+  },
+  "schedule": [
+    "every weekend"
   ]
 }
