@@ -1,7 +1,7 @@
 {
   "extends": [
     "config:js-lib",
-    "schedule:weekends"
+    "schedule:monthly"
   ],
   "patch": {
     "automerge": true,

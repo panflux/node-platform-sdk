@@ -54,7 +54,7 @@ function restart() {
             vorpal.log((LOG_COLORS[args.level] || chalk.default)(`[${args.level}] ${args.message}`));
             break;
         case 'discovery':
-            vorpal.log(chalk.magenta(args));
+            vorpal.log(chalk.magenta(JSON.stringify(args)));
             break;
         default:
             vorpal.log('Unknown message', msg);
@@ -84,7 +84,12 @@ vorpal
     .command('discover', 'Requests the platform to start a discovery run.')
     .alias('d')
     .action(function(args, callback) {
-        proc.send({name: 'discover'});
+        if (proc) {
+            proc.send({name: 'discover'});
+        } else {
+            vorpal.log(chalk.red('Discovery requires a running platform'));
+        }
+
         callback();
     });
 
