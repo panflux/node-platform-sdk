@@ -14,10 +14,14 @@ const watch = require('watch');
 
 const home = process.cwd();
 
+const RESTART_DELAY = 250;
 const LOG_COLORS = {
     error: chalk.bold.red,
     warn: chalk.bold.yellow,
     info: chalk.green,
+    verbose: chalk.magenta,
+    debug: chalk.blue,
+    silly: chalk.gray,
 };
 
 let timeout;
@@ -28,7 +32,7 @@ let proc;
  */
 function delayedRestart() {
     clearTimeout(timeout);
-    timeout = setTimeout(restart, 250);
+    timeout = setTimeout(restart, RESTART_DELAY);
 }
 
 /**
@@ -36,7 +40,10 @@ function delayedRestart() {
  */
 function restart() {
     if (proc) {
-        proc.kill('SIGHUP');
+        proc.send({name: 'stop'});
+        setTimeout(() => {
+            if (proc) proc.kill('SIGHUP');
+        }, RESTART_DELAY / 2);
         delayedRestart();
         return;
     }
@@ -54,13 +61,16 @@ function restart() {
             vorpal.log((LOG_COLORS[args.level] || chalk.default)(`[${args.level}] ${args.message}`));
             break;
         case 'discovery':
-            vorpal.log(chalk.magenta(JSON.stringify(args)));
+            // Kick discoveries back into the platform as new devices to process
+            proc.send({name: 'adopt', args});
             break;
         default:
             vorpal.log('Unknown message', msg);
             break;
         }
     });
+
+    proc.send({name: 'start'});
 }
 
 watch.createMonitor(home, {interval: 1}, (monitor) => {
@@ -77,6 +87,22 @@ vorpal
     .alias('r')
     .action(function(args, callback) {
         restart();
+        callback();
+    });
+
+vorpal
+    .command('pause', 'Pauses the platform')
+    .action((args, callback) => {
+        proc.send({name: 'stop'});
+        vorpal.log('Sent stop request');
+        callback();
+    });
+
+vorpal
+    .command('start', 'Starts the platform if paused')
+    .action((args, callback) => {
+        proc.send({name: 'start'});
+        vorpal.log('Sent start request');
         callback();
     });
 
