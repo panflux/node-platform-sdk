@@ -8,7 +8,6 @@
     "bin": {
         "test-platform": "./bin/test-platform.js"
     },
-    "types": "./index.d.ts",
     "scripts": {
         "lint": "eslint --fix src tests",
         "test": "eslint src && jest"
