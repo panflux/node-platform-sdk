@@ -8,6 +8,7 @@
     "bin": {
         "test-platform": "./bin/test-platform.js"
     },
+    "types": "./index.d.ts",
     "scripts": {
         "lint": "eslint --fix src tests",
         "test": "eslint src && jest"
@@ -26,11 +27,11 @@
     },
     "devDependencies": {
         "@types/jest": "23.3.13",
-        "eslint": "5.12.1",
-        "eslint-config-google": "0.11.0",
+        "eslint": "5.13.0",
+        "eslint-config-google": "0.12.0",
         "eslint-plugin-compat": "2.6.3",
         "eslint-plugin-import": "2.16.0",
-        "eslint-plugin-jest": "22.2.0",
+        "eslint-plugin-jest": "22.2.2",
         "husky": "1.3.1",
         "jest": "24.0.0",
         "lint-staged": "8.1.1",

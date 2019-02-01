@@ -11,7 +11,7 @@ const path = require('path');
 const rootdir = path.resolve(__dirname, '..');
 
 test('Fork runs platform', () => {
-    let message;
+    let message = {};
 
     process.send = (msg) => {
         message = msg;
