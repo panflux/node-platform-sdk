@@ -1,6 +1,6 @@
 {
     "name": "@panflux/platform-sdk",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "description": "Software Development Kit for Panflux platform development",
     "repository": "github:panflux/node-platform-sdk",
     "author": "Niels Keurentjes <niels.keurentjes@omines.com>",
