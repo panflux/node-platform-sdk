@@ -6,9 +6,9 @@
  * file that was distributed with this source code.
  */
 
-const {platform, logger} = require('@panflux/platform');
-
-logger.info('Foo');
-platform.on('load', () => {
-    logger.warn('Loaded');
-});
+module.exports = (platform, logger) => {
+    logger.info('Foo');
+    platform.on('load', () => {
+        logger.warn('Loaded');
+    });
+};
