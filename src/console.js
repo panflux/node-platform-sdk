@@ -60,6 +60,10 @@ function restart() {
         case 'log':
             vorpal.log((LOG_COLORS[args.level] || chalk.default)(`[${args.level}] ${args.message}`));
             break;
+        case 'data':
+            // console.log(msg);
+            vorpal.log('Receiving data');
+            break;
         case 'discovery':
             // Kick discoveries back into the platform as new devices to process
             proc.send({name: 'adopt', args});
