@@ -25,12 +25,12 @@
         "watch": "^1.0.2"
     },
     "devDependencies": {
-        "@types/jest": "24.0.23",
-        "eslint": "6.7.1",
+        "@types/jest": "24.0.24",
+        "eslint": "6.8.0",
         "eslint-config-google": "0.14.0",
         "eslint-plugin-compat": "3.3.0",
-        "eslint-plugin-import": "2.18.2",
-        "eslint-plugin-jest": "23.0.5",
+        "eslint-plugin-import": "2.19.1",
+        "eslint-plugin-jest": "23.1.1",
         "husky": "3.1.0",
         "jest": "24.9.0",
         "lint-staged": "9.5.0",
