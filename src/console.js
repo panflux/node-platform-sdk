@@ -6,12 +6,15 @@
  * file that was distributed with this source code.
  */
 
+const Conf = require('conf');
+
 const chalk = require('chalk');
 const fork = require('child_process').fork;
 const path = require('path');
 const vorpal = require('vorpal')();
 const watch = require('watch');
 
+const config = new Conf();
 const home = process.cwd();
 
 const RESTART_DELAY = 250;
@@ -99,14 +102,16 @@ vorpal
     .action((args, callback) => {
         proc.send({name: 'stop'});
         vorpal.log('Sent stop request');
+        config.set('platform.start', false);
         callback();
     });
 
 vorpal
     .command('start', 'Starts the platform if paused')
     .action((args, callback) => {
-        proc.send({name: 'start'});
+        restart();
         vorpal.log('Sent start request');
+        config.set('platform.start', true);
         callback();
     });
 
@@ -130,4 +135,7 @@ vorpal
     .delimiter(path.basename(home) + '$')
     .show();
 
-restart();
+if (config.get('platform.start')) {
+    restart();
+}
+
