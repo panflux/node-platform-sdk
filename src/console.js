@@ -7,9 +7,12 @@
  */
 
 const Conf = require('conf');
+const Panflux = require('@panflux/platform').Platform;
 
+const _ = require('lodash');
 const chalk = require('chalk');
 const fork = require('child_process').fork;
+const inquirer = require('inquirer');
 const path = require('path');
 const vorpal = require('vorpal')();
 const watch = require('watch');
@@ -27,8 +30,7 @@ const LOG_COLORS = {
     silly: chalk.gray,
 };
 
-let timeout;
-let proc;
+let timeout; let proc; let platform;
 
 /**
  * Restart the platform code after a short delay.
@@ -50,7 +52,9 @@ function restart() {
         delayedRestart();
         return;
     }
-    vorpal.log('Starting platform...');
+
+    platform = Panflux.load(home);
+    vorpal.log(`Starting platform '${platform.config.name}' (${platform.config.friendly_name})...`);
 
     proc = fork(path.join(__dirname, 'fork.js'));
     proc.on('exit', (code, signal) => {
@@ -116,6 +120,32 @@ vorpal
     });
 
 vorpal
+    .command('add', 'Manually add a new entity.')
+    .action((args, callback) => {
+        const types = platform.config.types;
+        switch (_.size(types)) {
+        case 0:
+            vorpal.log(chalk.red('Define some entity types first in your platform definition'));
+            callback();
+            break;
+        case 1:
+            addEntity(Object.keys(types)[0], Object.values(types)[0])
+                .then(callback);
+            break;
+        default:
+            inquirer.prompt([{
+                message: 'Select the type of entity you wish to add',
+                type: 'list',
+                name: 'type',
+                choices: Object.keys(platform.config.types),
+            }])
+                .then((answers) => addEntity(answers.type, types[answers.type]))
+                .then(callback);
+            break;
+        }
+    });
+
+vorpal
     .command('discover', 'Requests the platform to start a discovery run.')
     .alias('d')
     .action(function(args, callback) {
@@ -139,3 +169,17 @@ if (config.get('platform.start')) {
     restart();
 }
 
+// Helper functions
+
+/**
+ * @param {string} name
+ * @param {object} definition
+ * @return {Promise}
+ */
+function addEntity(name, definition) {
+    return new Promise((resolve) => {
+        vorpal.log(`Creating new entity of type '${name}'...`);
+        console.log(definition);
+        resolve();
+    });
+}
