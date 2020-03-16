@@ -7,7 +7,7 @@
  */
 
 const Conf = require('conf');
-const Panflux = require('@panflux/platform').Platform;
+const Panflux = require('@panflux/platform');
 
 const _ = require('lodash');
 const chalk = require('chalk');
@@ -53,7 +53,13 @@ function restart() {
         return;
     }
 
-    platform = Panflux.load(home);
+    try {
+        platform = Panflux.Platform.load(home);
+    } catch (err) {
+        vorpal.log(chalk.red('Failed to load platform'));
+        vorpal.log(err);
+        return;
+    }
     vorpal.log(`Starting platform '${platform.config.name}' (${platform.config.friendly_name})...`);
 
     proc = fork(path.join(__dirname, 'fork.js'));
@@ -82,6 +88,7 @@ function restart() {
     });
 
     proc.send({name: 'start'});
+    config.set('platform.start', true);
 }
 
 watch.createMonitor(home, {interval: 1}, (monitor) => {
@@ -115,7 +122,6 @@ vorpal
     .action((args, callback) => {
         restart();
         vorpal.log('Sent start request');
-        config.set('platform.start', true);
         callback();
     });
 
@@ -129,6 +135,7 @@ vorpal
             callback();
             break;
         case 1:
+            vorpal.log('Only one entity type defined, skipping selection');
             addEntity(Object.keys(types)[0], Object.values(types)[0])
                 .then(callback);
             break;
@@ -165,11 +172,10 @@ vorpal
     .delimiter(path.basename(home) + '$')
     .show();
 
+// Autostart the platform if it was active last time
 if (config.get('platform.start')) {
     restart();
 }
-
-// Helper functions
 
 /**
  * @param {string} name
@@ -179,7 +185,26 @@ if (config.get('platform.start')) {
 function addEntity(name, definition) {
     return new Promise((resolve) => {
         vorpal.log(`Creating new entity of type '${name}'...`);
-        console.log(definition);
-        resolve();
+
+        const questions = [];
+        _.forOwn(definition.config, (entry, name) => {
+            const schema = Panflux.Schema.createValueSchema(entry);
+            questions.push({
+                type: 'input',
+                name,
+                filter: (val) => {
+                    return val !== '' ? val : undefined;
+                },
+                validate: (val) => {
+                    const {error} = schema.validate(val !== '' ? val : undefined);
+                    return error ? error : true;
+                },
+            });
+        });
+        inquirer.prompt(questions)
+            .then((config) => {
+                console.log(config);
+            })
+            .then(resolve);
     });
 }
