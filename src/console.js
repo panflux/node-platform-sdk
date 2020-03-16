@@ -17,7 +17,11 @@ const path = require('path');
 const vorpal = require('vorpal')();
 const watch = require('watch');
 
-const config = new Conf();
+const config = new Conf({
+    started: false,
+    entities: [],
+    count: 0,
+});
 const home = process.cwd();
 
 const RESTART_DELAY = 250;
@@ -30,7 +34,7 @@ const LOG_COLORS = {
     silly: chalk.gray,
 };
 
-let timeout; let proc; let platform;
+let timeout; let proc; let platform; const entities = config.get('entities') || [];
 
 /**
  * Restart the platform code after a short delay.
@@ -70,6 +74,9 @@ function restart() {
     proc.on('message', (msg) => {
         const args = msg.args;
         switch (msg.name) {
+        case 'start':
+            vorpal.log('Started');
+            break;
         case 'log':
             vorpal.log((LOG_COLORS[args.level] || chalk.default)(`[${args.level}] ${args.message}`));
             break;
@@ -88,7 +95,9 @@ function restart() {
     });
 
     proc.send({name: 'start'});
-    config.set('platform.start', true);
+    entities.forEach((entity) => proc.send({name: 'adopt', args: entity}));
+
+    config.set('started', true);
 }
 
 watch.createMonitor(home, {interval: 1}, (monitor) => {
@@ -113,7 +122,7 @@ vorpal
     .action((args, callback) => {
         proc.send({name: 'stop'});
         vorpal.log('Sent stop request');
-        config.set('platform.start', false);
+        config.set('started', false);
         callback();
     });
 
@@ -173,7 +182,7 @@ vorpal
     .show();
 
 // Autostart the platform if it was active last time
-if (config.get('platform.start')) {
+if (config.get('started')) {
     restart();
 }
 
@@ -188,10 +197,24 @@ function addEntity(name, definition) {
 
         const questions = [];
         _.forOwn(definition.config, (entry, name) => {
-            const schema = Panflux.Schema.createValueSchema(entry);
+            // No need to check for errors as we have already validated the platform definition as a whole, but
+            // we double validate for the normalization
+            const schema = Panflux.Schema.createValueSchema(Panflux.Schema.types.typeSchema.validate(entry).value);
+            const meta = schema.describe();
+            let message = name;
+            if (meta.flags && meta.flags.description) {
+                message += ` - ${meta.flags.description}`;
+            }
+            if (meta.flags && meta.flags.default !== undefined) {
+                message += ` (default=${meta.flags.default})`;
+            } else if (!meta.flags || meta.flags.presence !== 'required') {
+                message += ` (optional)`;
+            }
+            message += ':';
             questions.push({
                 type: 'input',
                 name,
+                message,
                 filter: (val) => {
                     return val !== '' ? val : undefined;
                 },
@@ -202,8 +225,19 @@ function addEntity(name, definition) {
             });
         });
         inquirer.prompt(questions)
-            .then((config) => {
-                console.log(config);
+            .then((answers) => {
+                config.set('count', (config.get('count') || 0) + 1);
+
+                const entity = {
+                    id: `${config.get('count')}`,
+                    type: name,
+                    // Remove undefined values (optional/default)
+                    config: _.pickBy(answers, (val) => val !== undefined),
+                };
+                entities.push(entity);
+                config.set('entities', entities);
+
+                proc.send({name: 'adopt', args: entity});
             })
             .then(resolve);
     });
