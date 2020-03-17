@@ -20,6 +20,7 @@ const watch = require('watch');
 const config = new Conf({
     started: false,
     entities: [],
+    logLevel: 'debug',
     count: 0,
 });
 const home = process.cwd();
@@ -49,7 +50,9 @@ function delayedRestart() {
  */
 function restart() {
     if (proc) {
-        proc.send({name: 'stop'});
+        if (proc.connected) {
+            proc.send({name: 'stop'});
+        }
         setTimeout(() => {
             if (proc) proc.kill('SIGHUP');
         }, RESTART_DELAY / 2);
@@ -81,12 +84,14 @@ function restart() {
             vorpal.log((LOG_COLORS[args.level] || chalk.default)(`[${args.level}] ${args.message}`));
             break;
         case 'data':
-            // console.log(msg);
-            vorpal.log('Receiving data');
+            vorpal.log(chalk.bold('Receiving data: ' + JSON.stringify(args)));
             break;
         case 'discovery':
             // Kick discoveries back into the platform as new devices to process
             proc.send({name: 'adopt', args});
+            break;
+        case 'pendingChanges':
+            proc.send({name: 'processChangeQueue'});
             break;
         default:
             vorpal.log('Unknown message', msg);
@@ -95,6 +100,7 @@ function restart() {
     });
 
     proc.send({name: 'start'});
+    proc.send({name: 'setLogLevel', args: config.get('logLevel', 'debug')});
     entities.forEach((entity) => proc.send({name: 'adopt', args: entity}));
 
     config.set('started', true);
@@ -112,7 +118,7 @@ watch.createMonitor(home, {interval: 1}, (monitor) => {
 vorpal
     .command('restart', 'Restarts the platform.')
     .alias('r')
-    .action(function(args, callback) {
+    .action((args, callback) => {
         restart();
         callback();
     });
@@ -179,13 +185,23 @@ vorpal
 vorpal
     .command('discover', 'Requests the platform to start a discovery run.')
     .alias('d')
-    .action(function(args, callback) {
+    .action((args, callback) => {
         if (proc) {
             proc.send({name: 'discover'});
         } else {
             vorpal.log(chalk.red('Discovery requires a running platform'));
         }
 
+        callback();
+    });
+
+vorpal
+    .command('loglevel <level>', 'Changes the log level dumped to your console.')
+    .alias('log')
+    .action((args, callback) => {
+        config.set('logLevel', args.level);
+        proc.send({name: 'setLogLevel', args: args.level});
+        vorpal.log('Log level changed');
         callback();
     });
 
