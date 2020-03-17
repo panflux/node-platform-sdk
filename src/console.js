@@ -136,6 +136,7 @@ vorpal
 
 vorpal
     .command('add', 'Manually add a new entity.')
+    .alias('a')
     .action((args, callback) => {
         const types = platform.config.types;
         switch (_.size(types)) {
@@ -217,7 +218,7 @@ function addEntity(name, definition) {
             const meta = schema.describe();
             let message = name;
             if (meta.flags && meta.flags.description) {
-                message += ` - ${meta.flags.description}`;
+                message += `: ${meta.flags.description}`;
             }
             if (meta.flags && meta.flags.default !== undefined) {
                 message += ` (default=${meta.flags.default})`;
