@@ -162,6 +162,20 @@ vorpal
     });
 
 vorpal
+    .command('list', 'Lists known entities')
+    .alias('l')
+    .action((args, callback) => {
+        vorpal.log(chalk.yellow('Known entities:'), '');
+        entities.forEach((entity) => {
+            vorpal.log(chalk` ID: {bold ${entity.id}}`);
+            vorpal.log(chalk` Type: {bold ${entity.type}}`);
+            vorpal.log(chalk` Config: {bold ${JSON.stringify(entity.config)}}`);
+            vorpal.log('');
+        });
+        callback();
+    });
+
+vorpal
     .command('discover', 'Requests the platform to start a discovery run.')
     .alias('d')
     .action(function(args, callback) {
