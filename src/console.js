@@ -34,6 +34,7 @@ const LOG_COLORS = {
     debug: chalk.blue,
     silly: chalk.gray,
 };
+const LOG_LEVELS = Object.keys(LOG_COLORS);
 
 let timeout; let proc; let platform; const entities = config.get('entities') || [];
 
@@ -50,8 +51,10 @@ function delayedRestart() {
  */
 function restart() {
     if (proc) {
-        if (proc.connected) {
+        try {
             proc.send({name: 'stop'});
+        } catch (err) {
+            // Ignore - Node doesn't clean its plumbing all that well
         }
         setTimeout(() => {
             if (proc) proc.kill('SIGHUP');
@@ -199,9 +202,13 @@ vorpal
     .command('loglevel <level>', 'Changes the log level dumped to your console.')
     .alias('log')
     .action((args, callback) => {
-        config.set('logLevel', args.level);
-        proc.send({name: 'setLogLevel', args: args.level});
-        vorpal.log('Log level changed');
+        if (LOG_LEVELS.indexOf(args.level) === -1) {
+            vorpal.log(chalk.red(`Invalid log level, valid levels are: ${LOG_LEVELS.join(', ')}`));
+        } else {
+            config.set('logLevel', args.level);
+            proc.send({name: 'setLogLevel', args: args.level});
+            vorpal.log('Log level changed');
+        }
         callback();
     });
 
