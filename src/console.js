@@ -36,7 +36,13 @@ const LOG_COLORS = {
 };
 const LOG_LEVELS = Object.keys(LOG_COLORS);
 
-let timeout; let proc; let platform; const entities = config.get('entities') || [];
+let timeout;
+let proc;
+
+/** @var {panflux.Platform} */
+let platform;
+
+const entities = config.get('entities') || [];
 
 /**
  * Restart the platform code after a short delay.
@@ -148,7 +154,7 @@ vorpal
     .alias('a')
     .action((args, callback) => {
         const types = platform.config.types;
-        switch (_.size(types)) {
+        switch (platform.types.size) {
         case 0:
             vorpal.log(chalk.red('Define some entity types first in your platform definition'));
             callback();
@@ -163,7 +169,7 @@ vorpal
                 message: 'Select the type of entity you wish to add',
                 type: 'list',
                 name: 'type',
-                choices: Object.keys(platform.config.types),
+                choices: Array.from(platform.types.keys()),
             }])
                 .then((answers) => addEntity(answers.type, types[answers.type]))
                 .then(callback);
