@@ -10,7 +10,7 @@ const path = require('path');
 
 const rootdir = path.resolve(__dirname, '..');
 
-test('Fork runs platform', () => {
+test.skip('Fork runs platform', () => {
     let message = {};
 
     process.send = (msg) => {
