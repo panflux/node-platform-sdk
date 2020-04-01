@@ -58,7 +58,9 @@ function delayedRestart() {
 function restart() {
     if (proc) {
         try {
-            proc.send({name: 'stop'});
+            if (proc.connected) {
+                proc.send({name: 'stop'});
+            }
         } catch (err) {
             // Ignore - Node doesn't clean its plumbing all that well
         }
