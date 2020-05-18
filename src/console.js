@@ -11,18 +11,14 @@ const Panflux = require('@panflux/platform');
 
 const _ = require('lodash');
 const chalk = require('chalk');
+const exitHook = require('exit-hook');
 const fork = require('child_process').fork;
+const humanizeString = require('humanize-string');
 const inquirer = require('inquirer');
 const path = require('path');
 const vorpal = require('vorpal')();
 const watch = require('watch');
 
-const config = new Conf({
-    started: false,
-    entities: [],
-    logLevel: 'debug',
-    count: 0,
-});
 const home = process.cwd();
 
 const RESTART_DELAY = 250;
@@ -42,6 +38,18 @@ let proc;
 /** @var {panflux.Platform} */
 let platform;
 
+// Load config
+const config = new Conf({
+    started: false,
+    entities: [],
+    logLevel: 'debug',
+    count: 0,
+});
+process.argv.forEach(function(val, index, array) {
+    if (val === '--reset' || val === 'reset') {
+        config.clear();
+    }
+});
 const entities = config.get('entities') || [];
 
 /**
@@ -95,11 +103,24 @@ function restart() {
             vorpal.log((LOG_COLORS[args.level] || chalk.default)(`[${args.level}] ${args.message}`));
             break;
         case 'data':
-            vorpal.log(chalk.bold('Receiving data: ' + JSON.stringify(args)));
+            vorpal.log(chalk.bold(`Data: ${JSON.stringify(args)}`));
+            break;
+        case 'event':
+            vorpal.log(chalk.bold(`Event '${args.name}' on ${args.entityId}: ${JSON.stringify(args.parameters)}`));
             break;
         case 'discovery':
             // Kick discoveries back into the platform as new devices to process
-            proc.send({name: 'adopt', args});
+            if (_.findIndex(entities, (val) => args.id === val.id) === -1) {
+                registerEntity({
+                    id: args.id,
+                    name: args.name,
+                    type: args.type,
+                    config: args.config,
+                });
+                proc.send({name: 'adopt', args});
+            } else {
+                vorpal.log(chalk.yellow(`Ignoring known discovery ${args.name} (${args.id}) of type ${args.type}`));
+            }
             break;
         case 'pendingChanges':
             proc.send({name: 'processChangeQueue'});
@@ -124,6 +145,13 @@ watch.createMonitor(home, {interval: 1}, (monitor) => {
         vorpal.log(`./${local} was ${e}...`);
         delayedRestart();
     }));
+});
+
+exitHook(() => {
+    // Node really has terrible plumbing so let's just kill our child process if it exists
+    if (proc) {
+        proc.kill('SIGKILL');
+    }
 });
 
 vorpal
@@ -155,6 +183,9 @@ vorpal
     .command('add', 'Manually add a new entity.')
     .alias('a')
     .action((args, callback) => {
+        if (!proc) {
+            restart();
+        }
         const types = platform.config.types;
         switch (platform.types.size) {
         case 0:
@@ -163,7 +194,7 @@ vorpal
             break;
         case 1:
             vorpal.log('Only one entity type defined, skipping selection');
-            addEntity(Object.keys(types)[0], Object.values(types)[0])
+            createEntity(Object.keys(types)[0], Object.values(types)[0])
                 .then(callback);
             break;
         default:
@@ -173,7 +204,7 @@ vorpal
                 name: 'type',
                 choices: Array.from(platform.types.keys()),
             }])
-                .then((answers) => addEntity(answers.type, types[answers.type]))
+                .then((answers) => createEntity(answers.type, types[answers.type]))
                 .then(callback);
             break;
         }
@@ -186,6 +217,7 @@ vorpal
         vorpal.log(chalk.yellow('Known entities:'), '');
         entities.forEach((entity) => {
             vorpal.log(chalk` ID: {bold ${entity.id}}`);
+            vorpal.log(chalk` Name: {bold ${entity.name}}`);
             vorpal.log(chalk` Type: {bold ${entity.type}}`);
             vorpal.log(chalk` Config: {bold ${JSON.stringify(entity.config)}}`);
             vorpal.log('');
@@ -233,21 +265,26 @@ if (config.get('started')) {
 }
 
 /**
- * @param {string} name
+ * @param {string} type
  * @param {object} definition
  * @return {Promise}
  */
-function addEntity(name, definition) {
+function createEntity(type, definition) {
     return new Promise((resolve) => {
-        vorpal.log(`Creating new entity of type '${name}'...`);
+        vorpal.log(`Creating new entity of type '${type}'...`);
 
-        const questions = [];
+        const questions = [{
+            type: 'input',
+            name: '_name',
+            message: 'Provide a name for the new entity:',
+            default: humanizeString(type),
+        }];
         _.forOwn(definition.config, (entry, name) => {
             // No need to check for errors as we have already validated the platform definition as a whole, but
             // we double validate for the normalization
             const schema = Panflux.Schema.createValueSchema(Panflux.Schema.types.typeSchema.validate(entry).value);
             const meta = schema.describe();
-            let message = name;
+            let message = humanizeString(name);
             if (meta.flags && meta.flags.description) {
                 message += `: ${meta.flags.description}`;
             }
@@ -271,20 +308,25 @@ function addEntity(name, definition) {
             });
         });
         inquirer.prompt(questions)
-            .then((answers) => {
-                config.set('count', (config.get('count') || 0) + 1);
-
-                const entity = {
-                    id: `${config.get('count')}`,
-                    type: name,
-                    // Remove undefined values (optional/default)
-                    config: _.pickBy(answers, (val) => val !== undefined),
-                };
-                entities.push(entity);
-                config.set('entities', entities);
-
-                proc.send({name: 'adopt', args: entity});
-            })
+            .then((answers) => registerEntity({
+                name: answers._name,
+                type,
+                config: _.pickBy(answers, (val, key) => (val !== undefined && key[0] !== '_')),
+            }))
             .then(resolve);
     });
+}
+
+/**
+ * @param {object} entity
+ */
+function registerEntity(entity) {
+    config.set('count', (config.get('count') || 0) + 1);
+    if (!entity.id) {
+        entity.id = `${config.get('count')}`;
+    }
+    entities.push(entity);
+    config.set('entities', entities);
+
+    proc.send({name: 'adopt', args: entity});
 }
