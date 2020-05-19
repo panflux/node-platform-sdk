@@ -50,7 +50,7 @@ process.argv.forEach(function(val, index, array) {
         config.clear();
     }
 });
-const entities = config.get('entities') || [];
+let entities = config.get('entities') || [];
 
 /**
  * Restart the platform code after a short delay.
@@ -176,6 +176,16 @@ vorpal
     .action((args, callback) => {
         restart();
         vorpal.log('Sent start request');
+        callback();
+    });
+
+vorpal
+    .command('reset', 'Clears all configuration and restarts the platform')
+    .action((args, callback) => {
+        config.clear();
+        entities = [];
+        restart();
+        vorpal.log('Restarting with cleared configuration');
         callback();
     });
 
