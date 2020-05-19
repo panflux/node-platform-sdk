@@ -136,6 +136,7 @@ function restart() {
     entities.forEach((entity) => proc.send({name: 'adopt', args: entity}));
 
     config.set('started', true);
+    vorpal.show();
 }
 
 watch.createMonitor(home, {interval: 1}, (monitor) => {
@@ -236,6 +237,46 @@ vorpal
     });
 
 vorpal
+    .command('call', 'Calls a service on a known entity')
+    .alias('c')
+    .action((args, callback) => {
+        vorpal.hide();
+        selectEntity()
+            .then((entity) => {
+                const services = platform.getEntityType(entity.type).definition.services;
+                if (!_.size(services)) {
+                    throw new Error('There are no services available on this entity');
+                }
+                return inquirer.prompt([
+                    {
+                        type: 'list',
+                        name: 'service',
+                        message: 'Select service to call:',
+                        choices: _.map(services, (parameters, service) => {
+                            return {name: service, value: {id: entity.id, service, parameters}};
+                        }),
+                    },
+                ]);
+            })
+            .then(({service}) => {
+                return inquirer.prompt(createSchemaQuestions(service.parameters))
+                    .then((answers) => {
+                        service.parameters = answers;
+                        return service;
+                    });
+            })
+            .then((args) => {
+                proc.send({name: 'call', args});
+                vorpal.show();
+                callback();
+            })
+            .catch((err) => {
+                vorpal.show();
+                throw err;
+            });
+    });
+
+vorpal
     .command('discover', 'Requests the platform to start a discovery run.')
     .alias('d')
     .action((args, callback) => {
@@ -280,51 +321,20 @@ if (config.get('started')) {
  * @return {Promise}
  */
 function createEntity(type, definition) {
-    return new Promise((resolve) => {
-        vorpal.log(`Creating new entity of type '${type}'...`);
+    vorpal.log(`Creating new entity of type '${type}'...`);
 
-        const questions = [{
-            type: 'input',
-            name: '_name',
-            message: 'Provide a name for the new entity:',
-            default: humanizeString(type),
-        }];
-        _.forOwn(definition.config, (entry, name) => {
-            // No need to check for errors as we have already validated the platform definition as a whole, but
-            // we double validate for the normalization
-            const schema = Panflux.Schema.createValueSchema(Panflux.Schema.types.typeSchema.validate(entry).value);
-            const meta = schema.describe();
-            let message = humanizeString(name);
-            if (meta.flags && meta.flags.description) {
-                message += `: ${meta.flags.description}`;
-            }
-            if (meta.flags && meta.flags.default !== undefined) {
-                message += ` (default=${meta.flags.default})`;
-            } else if (!meta.flags || meta.flags.presence !== 'required') {
-                message += ` (optional)`;
-            }
-            message += ':';
-            questions.push({
-                type: 'input',
-                name,
-                message,
-                filter: (val) => {
-                    return val !== '' ? val : undefined;
-                },
-                validate: (val) => {
-                    const {error} = schema.validate(val !== '' ? val : undefined);
-                    return error ? error : true;
-                },
-            });
-        });
-        inquirer.prompt(questions)
-            .then((answers) => registerEntity({
-                name: answers._name,
-                type,
-                config: _.pickBy(answers, (val, key) => (val !== undefined && key[0] !== '_')),
-            }))
-            .then(resolve);
-    });
+    return inquirer.prompt(_.concat({
+        type: 'input',
+        name: '_name',
+        message: 'Provide a name for the new entity:',
+        default: humanizeString(type),
+    }), createSchemaQuestions(definition.config))
+        .then((answers) => registerEntity({
+            name: answers._name,
+            type,
+            config: _.pickBy(answers, (val, key) => (val !== undefined && key[0] !== '_')),
+        }))
+    ;
 }
 
 /**
@@ -339,4 +349,57 @@ function registerEntity(entity) {
     config.set('entities', entities);
 
     proc.send({name: 'adopt', args: entity});
+}
+
+/**
+ * @return {*|Promise<void>|PromiseLike<any>|Promise<any>}
+ */
+function selectEntity() {
+    return inquirer.prompt([
+        {
+            type: 'list',
+            name: 'entity',
+            message: 'Select entity to call service on:',
+            choices: entities.map((entity) => {
+                return {name: entity.name, value: entity};
+            }),
+        },
+    ]).then((answers) => answers.entity);
+}
+
+/**
+ * Create an inquirer question array based on a raw definition schema.
+ *
+ * @param {object} definition
+ * @return {Array}
+ */
+function createSchemaQuestions(definition) {
+    return _.map(definition, (entry, name) => {
+        // No need to check for errors as we have already validated the platform definition as a whole, but
+        // we double validate for the normalization
+        const schema = Panflux.Schema.createValueSchema(Panflux.Schema.types.typeSchema.validate(entry).value);
+        const meta = schema.describe();
+        let message = humanizeString(name);
+        if (meta.flags && meta.flags.description) {
+            message += `: ${meta.flags.description}`;
+        }
+        if (meta.flags && meta.flags.default !== undefined) {
+            message += ` (default=${meta.flags.default})`;
+        } else if (!meta.flags || meta.flags.presence !== 'required') {
+            message += ` (optional)`;
+        }
+        message += ':';
+        return {
+            type: 'input',
+            name,
+            message,
+            filter: (val) => {
+                return val !== '' ? val : undefined;
+            },
+            validate: (val) => {
+                const {error} = schema.validate(val !== '' ? val : undefined);
+                return error ? error : true;
+            },
+        };
+    });
 }
