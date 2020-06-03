@@ -40,10 +40,14 @@ let platform;
 
 // Load config
 const config = new Conf({
-    started: false,
-    entities: [],
-    logLevel: 'debug',
-    count: 0,
+    defaults: {
+        started: false,
+        entities: [],
+        logLevel: 'debug',
+        count: 0,
+    },
+    projectName: path.basename(home),
+    projectSuffix: 'panflux',
 });
 process.argv.forEach(function(val, index, array) {
     if (val === '--reset' || val === 'reset') {
