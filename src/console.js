@@ -100,7 +100,7 @@ function restart() {
             vorpal.log('Started');
             break;
         case 'log':
-            vorpal.log((LOG_COLORS[args.level] || chalk.default)(`[${args.level}] ${args.message}`));
+            vorpal.log((LOG_COLORS[args.level] || chalk.reset)(`[${args.level}] ${args.message}`));
             break;
         case 'data':
             vorpal.log(chalk.bold(`Data: ${JSON.stringify(args)}`));
@@ -328,7 +328,7 @@ function createEntity(type, definition) {
         name: '_name',
         message: 'Provide a name for the new entity:',
         default: humanizeString(type),
-    }), createSchemaQuestions(definition.config))
+    }, createSchemaQuestions(definition.config)))
         .then((answers) => registerEntity({
             name: answers._name,
             type,
