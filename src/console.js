@@ -237,6 +237,7 @@ vorpal
         selectEntity()
             .then((entity) => {
                 _.pull(entities, entity);
+                config.set('entities', entities);
                 vorpal.show();
                 restart();
                 callback();
