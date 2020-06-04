@@ -226,6 +226,28 @@ vorpal
     });
 
 vorpal
+    .command('delete', 'Delete a known entity.')
+    .alias('del')
+    .action((args, callback) => {
+        if (entities.length === 0) {
+            vorpal.log('Add some entities first before you try to delete them');
+            return callback();
+        }
+        vorpal.hide();
+        selectEntity()
+            .then((entity) => {
+                _.pull(entities, entity);
+                vorpal.show();
+                restart();
+                callback();
+            })
+            .catch((err) => {
+                vorpal.show();
+                throw err;
+            });
+    });
+
+vorpal
     .command('list', 'Lists known entities')
     .alias('l')
     .action((args, callback) => {
