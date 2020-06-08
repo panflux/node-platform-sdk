@@ -114,7 +114,17 @@ function restart() {
             break;
         case 'discovery':
             // Kick discoveries back into the platform as new devices to process
-            if (_.findIndex(entities, (val) => args.id === val.id) === -1) {
+            if (args.parent !== undefined) {
+                const parent = _.find(entities, (val) => args.parent === val.id);
+                if (parent === undefined) {
+                    throw new Error(`Child entity "${args.name}" (${args.type}) refers to unknown parent entity ID "${args.parent}"`);
+                } else if (parent.children === undefined) {
+                    parent.children = [];
+                }
+
+                vorpal.log(chalk.bold(`Registering child entity "${args.name}" (${args.type}) to parent "${parent.name}"`));
+                parent.children.push(args);
+            } else if (_.findIndex(entities, (val) => args.id === val.id) === -1) {
                 registerEntity({
                     id: args.id,
                     name: args.name,
@@ -234,7 +244,7 @@ vorpal
             return callback();
         }
         vorpal.hide();
-        selectEntity()
+        selectEntity('Select entity to delete:')
             .then((entity) => {
                 _.pull(entities, entity);
                 config.set('entities', entities);
@@ -253,13 +263,23 @@ vorpal
     .alias('l')
     .action((args, callback) => {
         vorpal.log(chalk.yellow('Known entities:'), '');
-        entities.forEach((entity) => {
-            vorpal.log(chalk` ID: {bold ${entity.id}}`);
-            vorpal.log(chalk` Name: {bold ${entity.name}}`);
-            vorpal.log(chalk` Type: {bold ${entity.type}}`);
-            vorpal.log(chalk` Config: {bold ${JSON.stringify(entity.config)}}`);
-            vorpal.log('');
-        });
+
+        /* Recursive helper function */
+        function dumpEntitiesRecursive(list, indent) {
+            const prefix = '  '.repeat(indent);
+            list.forEach((entity) => {
+                vorpal.log(chalk`${prefix}ID: {bold ${entity.id}}`);
+                vorpal.log(chalk`${prefix}Name: {bold ${entity.name}}`);
+                vorpal.log(chalk`${prefix}Type: {bold ${entity.type}}`);
+                vorpal.log(chalk`${prefix}Config: {bold ${JSON.stringify(entity.config)}}`);
+                if (entity.children && entity.children.length) {
+                    vorpal.log(chalk`${prefix}Child entities:`);
+                    dumpEntitiesRecursive(entity.children, indent + 1);
+                }
+                vorpal.log('');
+            });
+        }
+        dumpEntitiesRecursive(entities, 1);
         callback();
     });
 
@@ -268,7 +288,7 @@ vorpal
     .alias('c')
     .action((args, callback) => {
         vorpal.hide();
-        selectEntity()
+        selectEntity('Select entity to call service on:')
             .then((entity) => {
                 const services = platform.getEntityType(entity.type).definition.services;
                 if (!_.size(services)) {
@@ -356,11 +376,16 @@ function createEntity(type, definition) {
         message: 'Provide a name for the new entity:',
         default: humanizeString(type),
     }, createSchemaQuestions(definition.config)))
-        .then((answers) => registerEntity({
-            name: answers._name,
-            type,
-            config: _.pickBy(answers, (val, key) => (val !== undefined && key[0] !== '_')),
-        }))
+        .then((answers) => {
+            const entity = {
+                name: answers._name,
+                type,
+                config: _.pickBy(answers, (val, key) => (val !== undefined && key[0] !== '_')),
+            };
+
+            registerEntity(entity);
+            proc.send({name: 'adopt', entity});
+        })
     ;
 }
 
@@ -374,19 +399,18 @@ function registerEntity(entity) {
     }
     entities.push(entity);
     config.set('entities', entities);
-
-    proc.send({name: 'adopt', args: entity});
 }
 
 /**
+ * @param {string} message
  * @return {*|Promise<void>|PromiseLike<any>|Promise<any>}
  */
-function selectEntity() {
+function selectEntity(message) {
     return inquirer.prompt([
         {
             type: 'list',
             name: 'entity',
-            message: 'Select entity to call service on:',
+            message,
             choices: entities.map((entity) => {
                 return {name: entity.name, value: entity};
             }),
