@@ -2,5 +2,12 @@
   "extends": [
     "config:js-lib",
     "schedule:monthly"
+  ],
+  "packageRules": [
+    {
+      "depTypeList": ["devDependencies"],
+      "automerge": true,
+      "automergeType": "branch"
+    }
   ]
 }
