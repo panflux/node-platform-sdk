@@ -212,14 +212,16 @@ vorpal
             restart();
         }
         const types = platform.config.types;
-        switch (platform.types.size) {
+
+        const publicTypes = _.filter([...platform.types], (type) => type[1].isPublic);
+        switch (publicTypes.length) {
         case 0:
-            vorpal.log(chalk.red('Define some entity types first in your platform definition'));
+            vorpal.log(chalk.red('Define some public entity types first in your platform definition'));
             callback();
             break;
         case 1:
-            vorpal.log('Only one entity type defined, skipping selection');
-            createEntity(Object.keys(types)[0], Object.values(types)[0])
+            vorpal.log(`Only one entity type ("${publicTypes[0][0]}") defined, skipping selection`);
+            createEntity(publicTypes[0][0], publicTypes[0][1].definition)
                 .then(callback);
             break;
         default:
@@ -319,7 +321,8 @@ vorpal
             })
             .catch((err) => {
                 vorpal.show();
-                throw err;
+                vorpal.log(chalk.red(err));
+                callback();
             });
     });
 
@@ -374,7 +377,7 @@ function createEntity(type, definition) {
         type: 'input',
         name: '_name',
         message: 'Provide a name for the new entity:',
-        default: humanizeString(type),
+        default: humanizeString(type.replace('.', ' ')),
     }, createSchemaQuestions(definition.config)))
         .then((answers) => {
             const entity = {
