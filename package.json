@@ -23,7 +23,7 @@
         "conf": "^7.0.0",
         "exit-hook": "^2.2.0",
         "humanize-string": "^2.1.0",
-        "inquirer": "^7.1.0",
+        "inquirer": "^8.0.0",
         "lodash": "^4.17.15",
         "vm2": "^3.6.10",
         "vorpal": "^1.12.0",
