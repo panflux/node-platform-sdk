@@ -20,7 +20,7 @@
     "dependencies": {
         "@panflux/platform": "^0.4.5",
         "chalk": "^4.0.0",
-        "conf": "^7.0.0",
+        "conf": "^12.0.0",
         "exit-hook": "^2.2.0",
         "humanize-string": "^2.1.0",
         "inquirer": "^7.1.0",
